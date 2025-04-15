@@ -1,0 +1,18 @@
+---
+title: "export-network"
+output: html_document
+date: ""
+---
+
+# Libraries
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+nodes <- read_csv("network-data/nodes.csv")
+links <- read_csv("network-data/edges.csv")
+```
+
