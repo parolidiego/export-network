@@ -7,7 +7,26 @@ date: ""
 # Libraries
 
 ```{r, message=FALSE, warning=FALSE}
+rm(list = ls())
 library(tidyverse)
+library(httr2)
+library(igraph)
+```
+
+
+# Get the data
+
+I have commented below to avoid calling it every time we render the document
+
+```{r}
+# zip_data <- request("https://networks.skewed.de/net/product_space/files/SITC.csv.zip") |> 
+#   req_perform()
+# 
+# writeBin(resp_body_raw(zip_data), "exports_SITC.csv.zip")
+# 
+# unzip("exports_SITC.csv.zip", exdir = "network-data")
+# 
+# file.remove("exports_SITC.csv.zip", )
 ```
 
 
@@ -15,4 +34,115 @@ library(tidyverse)
 nodes <- read_csv("network-data/nodes.csv")
 links <- read_csv("network-data/edges.csv")
 ```
+
+```{r}
+head(nodes)
+head(links)
+```
+
+Description of the dataset:
+
+Network of economic products, where a pair of products are connected if they are exported at similar rates by the same countries. The data are a projection from a bipartite network of nations and the products they export. Edges weights represent a similarity score (called "proximity"). Data based on UN Comtrade worldwide trade patterns. SITC network based on the Standard International Trade Classification.
+
+Properties:
+
+Weighted, Undirected
+
+Graph:
+
+```{r}
+graph <- graph_from_data_frame(links, directed = FALSE, vertices = nodes)
+graph
+```
+
+
+1. What is the number of nodes and links?
+
+```{r}
+vcount(graph)
+ecount(graph)
+```
+
+2. What is the average degree in the network? And the standard deviation of
+the degree?
+
+```{r}
+mean(degree(graph))
+sd(degree(graph))
+```
+
+3. Plot the degree distribution in linear-linear scale and in log-log-scale. Does it
+have a typical connectivity? What is the degree of the most connected
+node?
+
+```{r}
+# To be improved
+ggplot() + 
+  geom_histogram(aes(x = degree(graph))) + 
+  #geom_density(aes(x = degree(graph))) +
+  labs(x = "Degree", y = "", title = "Degree distribution")
+# To be done in log-log...
+
+max_degree(graph)
+```
+
+4. What is the clustering coefficient (transitivity) in the network?
+
+```{r}
+transitivity(graph)
+```
+
+5. What is the assortativity (degree) in the network?
+
+```{r}
+assortativity_degree(graph)
+```
+
+6. Using the Louvain method, does the network have a community structure? If so, what is its modularity?
+
+```{r}
+louvain_cluster <- cluster_louvain(graph, weights = E(graph)$width)
+
+sizes(louvain_cluster)
+
+modularity(louvain_cluster)
+
+# Labels of nodes need to be deleted
+plot(louvain_cluster, graph)
+
+
+```
+
+
+7. Test that the clustering coefficient in the network cannot be statistically
+explain by a configuration model in which the nodes have the same degree
+distribution as the original.
+
+```{r}
+graph_config <- sample_degseq(degree(graph), method="configuration") # other methods?
+
+transitivity(graph_config)
+
+# Statistical test (T-test?)?
+```
+
+
+8. Visualize the neighborhood of the node with the largest centrality
+(closeness)
+
+```{r}
+which.max(closeness(graph))
+
+neighbors(graph,"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")
+
+neigh_graph <- make_neighborhood_graph(graph, order = 1, "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")[[1]]
+
+# without the following plot won't work
+V(neigh_graph)$color <- trimws(V(neigh_graph)$color)
+E(neigh_graph)$color <- trimws(E(neigh_graph)$color)
+plot(neigh_graph)
+
+# Check + something more?
+```
+
 
