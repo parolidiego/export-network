@@ -223,7 +223,6 @@ for (i in 1:num_simulations) {
   config_graph <- sample_degseq(degree(graph), method = "vl")  
   simulated_clustering[i] <- transitivity(config_graph, type = "global")
 }
-simulated_clustering <- mean(simulated_clustering)
 ```
 
 Here we use the method "vl" (Viger–Latapy) as it is the one suggested for undirected connected graphs.
@@ -232,8 +231,13 @@ Once we have generated the networks we want to proceed with evaluation and test 
 
 ```{r}
 original_clustering
-simulated_clustering
+mean(simulated_clustering)
 ```
+
+```{r}
+t.test(x = simulated_clustering, mu = original_clustering, alternative = "two.sided")
+```
+
 
 We tested whether the clustering coefficient of the original network can
 be explained solely by its degree distribution, by comparing it to 1000
@@ -255,9 +259,11 @@ We discovered that the node with the largest centrality/closeness is "SLAG WOOL.
 head(neighbors(graph,"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"))
 ```
 
-These are some of the neighbors of our node of interest
+These are some of the neighbors of our node of interest. 
 
-```{r}
+We'll now plot its neighbors.
+
+```{r, fig.height=7, fig.dpi=300}
 neigh_graph <- make_neighborhood_graph(graph,
                                        order = 1, 
                                        "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")[[1]]
@@ -266,14 +272,20 @@ g <- as_tbl_graph(neigh_graph)
 
 ggraph(g, layout = 'fr') +
   geom_edge_link(alpha = 0.5, width = 1) +
-  geom_node_point(size = 5, aes(color = name == "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")) +
-  geom_node_text(aes(label = name), repel = TRUE, size = 3, color = "steelblue4") +
+  # Colouring of a different colour our central node
+  geom_node_point(size = 5, 
+                  aes(color = name == "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")) +
+  geom_node_text(aes(label = name), 
+                 repel = TRUE, 
+                 size = 3, 
+                 color = "steelblue", 
+                 check_overlap = TRUE) +
   guides(color = "none") +    
   theme_void()+
   labs(title = "Neighborhood of Node with Highest Closeness Centrality")
 ```
 
-We also used the "visNetwork" package to make an interactive graph:
+This plot looks a little bit messy, as the labels are very long so it's difficult to read, but if we hide all labels, we are losing much information. Therefore, we decided to use the `visNetwork` package to make an interactive graph:
 
 ```{r}
 library(visNetwork)
@@ -281,8 +293,10 @@ nodes <- data.frame(id = V(g)$name, label = V(g)$name)
 edges <- data.frame(from = as.character(ends(g, E(g))[,1]), to = as.character(ends(g, E(g))[,2]))
 
 visNetwork(nodes, edges) %>%
-  visEdges(arrows = 'to', color = list(color = "gray", hover = "red")) %>%
+  visEdges(color = list(color = "gray", hover = "red")) %>%
   visNodes(size = 15, color = list(background = "lightblue", border = "darkblue")) %>%
   visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE) %>%
   visLayout(randomSeed = 123)
 ```
+
+NOTE: As these is a `.pdf` document we are only able to show a screeenshot of the graph
