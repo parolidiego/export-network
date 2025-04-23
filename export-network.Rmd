@@ -3,10 +3,10 @@ title: "Social network analysis HW1: export-network"
 author: "Yijia Lin, Diego Paroli"
 date: "2025-04-23"
 output:
-  html_document: default
   pdf_document:
     latex_engine: xelatex
-    keep_tex: true
+    keep_tex: false
+  html_document: default
 knitr:
   opts_chunk:
     screenshot.force: true
@@ -258,7 +258,7 @@ These are some of the neighbors of our node of interest.
 
 We'll now plot its neighbors.
 
-```{r, fig.height=7, fig.dpi=300}
+```{r, fig.height=6, fig.dpi=300}
 neigh_graph <- make_neighborhood_graph(graph,
                                        order = 1, 
                                        "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")[[1]]
@@ -289,13 +289,12 @@ nodes <- data.frame(id = V(g)$name, label = V(g)$name)
 edges <- data.frame(from = as.character(ends(g, E(g))[,1]), 
                     to = as.character(ends(g, E(g))[,2]))
 
+# NOTE: In the `.pdf` document we are only able to show a screenshot of the graph
 visNetwork(nodes, edges) %>%
   visEdges(color = list(color = "gray", hover = "red")) %>%
   visNodes(size = 15, color = list(background = "lightblue", border = "darkblue")) %>%
   visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE) %>%
   visLayout(randomSeed = 123)
-
-# NOTE: In the `.pdf` document we are only able to show a screenshot of the graph
 ```
 
 It is hard to find any pattern for the neighbors of our central node. Lots of them seem to be agricultural products that do not require particular skills or conditions to be produced, the rest of them seem to be construction materials or other intermediate goods/machinery.
