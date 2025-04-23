@@ -3,10 +3,10 @@ title: "Social network analysis HW1: export-network"
 author: "Yijia Lin, Diego Paroli"
 date: "2025-04-23"
 output:
+  html_document: default
   pdf_document:
     latex_engine: xelatex
     keep_tex: true
-  html_document: default
 knitr:
   opts_chunk:
     screenshot.force: true
@@ -285,7 +285,8 @@ ggraph(g, layout = 'fr') +
   labs(title = "Neighborhood of Node with Highest Closeness Centrality")
 ```
 
-This plot looks a little bit messy, as the labels are very long so it's difficult to read, but if we hide all labels, we are losing much information. Therefore, we decided to use the `visNetwork` package to make an interactive graph:
+This plot looks a little bit messy, as the labels are quite long and difficult to read. However, if we hide all the labels, we lose a lot of valuable information.
+Therefore, we decided to use the visNetwork package to create an interactive graph, which allows us to freely drag nodes around and better explore the names of each node:
 
 ```{r}
 library(visNetwork)

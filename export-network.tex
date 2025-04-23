@@ -101,12 +101,12 @@
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same}
 \hypersetup{
-  pdftitle={Social network analysis hw1: export-network},
+  pdftitle={Social network analysis HW1: export-network},
   pdfauthor={Yijia Lin, Diego Paroli},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
-\title{Social network analysis hw1: export-network}
+\title{Social network analysis HW1: export-network}
 \author{Yijia Lin, Diego Paroli}
 \date{2025-04-23}
 
@@ -121,16 +121,17 @@
 \FunctionTok{library}\NormalTok{(tidyverse)}
 \FunctionTok{library}\NormalTok{(httr2)}
 \FunctionTok{library}\NormalTok{(igraph)}
+\FunctionTok{library}\NormalTok{(visNetwork)}
 \FunctionTok{library}\NormalTok{(tidygraph)}
 \FunctionTok{library}\NormalTok{(ggraph)}
-\FunctionTok{library}\NormalTok{(visNetwork)}
 \end{Highlighting}
 \end{Shaded}
 
 \section{Get the data}\label{get-the-data}
 
-I have commented below to avoid calling it every time we render the
-document
+Data has been obtained following the procedure in the chunk below. The
+code is commented to avoid repeating the download every time the notebok
+is run.
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -151,6 +152,27 @@ document
 \NormalTok{links }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\StringTok{"network{-}data/edges.csv"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
+
+\section{Description of the dataset}\label{description-of-the-dataset}
+
+Our network represents economic products. Two products are connected if
+two or more countries export both products in significant quantities
+(above world average). The meaning of a link is that two products are
+connected if the same countries ``specialize'' in making them, hence,
+basically, products are connected if they require the same capabilities
+to be made. Edges weights represent a similarity score (called
+``proximity''). Data is based on UN Comtrade worldwide trade patterns
+using the SITC (Standard International Trade Classification) for
+classifying product categories.
+
+Source: \href{https://www.michelecoscia.com/?page_id=223}{The Product
+Space}.
+
+\subsubsection{Properties:}\label{properties}
+
+Weighted, Undirected
+
+\subsubsection{Nodes and links}\label{nodes-and-links}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -188,18 +210,12 @@ document
 ## 6         10    480  8.92 "#949494\n"
 \end{verbatim}
 
-\section{Description of the dataset}\label{description-of-the-dataset}
-
-Network of economic products, where a pair of products are connected if
-they are exported at similar rates by the same countries. The data are a
-projection from a bipartite network of nations and the products they
-export. Edges weights represent a similarity score (called
-``proximity''). Data based on UN Comtrade worldwide trade patterns. SITC
-network based on the Standard International Trade Classification.
-
-\subsubsection{Properties:}\label{properties}
-
-Weighted, Undirected
+Most of the columns in the \texttt{nodes} dataset will not be useful for
+us. The column \texttt{\#\ index} is the one indicating the index of the
+nodes and the column \texttt{name} is the one indicating their
+corresponding name. In the \texttt{links} dataframe, the column
+\texttt{\#\ source} and \texttt{target} indicate the 2 nodes forming a
+link, while \texttt{width} is the weight of that link.
 
 \subsubsection{Graph:}\label{graph}
 
@@ -211,10 +227,10 @@ Weighted, Undirected
 \end{Shaded}
 
 \begin{verbatim}
-## IGRAPH 15427f0 UN-- 774 1779 -- 
+## IGRAPH 0ef3264 UN-- 774 1779 -- 
 ## + attr: name (v/c), pid (v/n), community (v/n), size (v/n), pos (v/c),
 ## | leamer (v/n), color (v/c), _pos (v/c), width (e/n), color (e/c)
-## + edges from 15427f0 (vertex names):
+## + edges from 0ef3264 (vertex names):
 ## [1] METAL FORMING MACHINE TOOLS                    --CONVERTERS,LADLES,INGOT MOULDS AND CASTING MACH.  
 ## [2] PRINTING PRESSES                               --OTHER MACH.-TOOLS FOR WORKING METAL OR MET.CARBIDE
 ## [3] OTHER FOOD PROCESSING MACHINERY AND PARTS      --PARTS OF THE MACHINERY OF 744.2-                  
@@ -248,7 +264,22 @@ links?}\label{what-is-the-number-of-nodes-and-links}
 ## [1] 1779
 \end{verbatim}
 
-There are in total 774 nodes and 1779 links in this network.
+There are in total 774 nodes (i.e.~economic product) and 1779 links in
+this network.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{components }\OtherTok{\textless{}{-}} \FunctionTok{components}\NormalTok{(graph)}
+\FunctionTok{head}\NormalTok{(components}\SpecialCharTok{$}\NormalTok{no)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1
+\end{verbatim}
+
+Our graph is fully connected i.e.~it forms one single connected
+component.
 
 \subsection{2. What is the average degree in the network? And the
 standard deviation of the
@@ -277,6 +308,11 @@ degree?}\label{what-is-the-average-degree-in-the-network-and-the-standard-deviat
 The average degree is 4.5969 in this network, with a standard deviation
 of 5.9948.
 
+This means that on average every product is connected to 4/5 other
+products. Standard deviation seems to be high (higher than the mean),
+therefore indicating that there could be both products with a lot of
+edges and products with just one edge.
+
 \subsection{3. Plot the degree distribution in linear-linear scale and
 in log-log-scale. Does it have a typical connectivity? What is the
 degree of the most connected
@@ -288,7 +324,9 @@ node?}\label{plot-the-degree-distribution-in-linear-linear-scale-and-in-log-log-
 \FunctionTok{ggplot}\NormalTok{() }\SpecialCharTok{+} 
   \FunctionTok{geom\_histogram}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \FunctionTok{degree}\NormalTok{(graph)),}
                  \AttributeTok{fill =} \StringTok{"\#69b3a2"}\NormalTok{, }\AttributeTok{color =} \StringTok{"white"}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.8}\NormalTok{) }\SpecialCharTok{+} 
-  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Degree"}\NormalTok{, }\AttributeTok{y =} \StringTok{""}\NormalTok{, }\AttributeTok{title =} \StringTok{"Degree distribution in linear{-}linear scale"}\NormalTok{)}\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Degree"}\NormalTok{, }
+       \AttributeTok{y =} \StringTok{""}\NormalTok{, }
+       \AttributeTok{title =} \StringTok{"Degree distribution in linear{-}linear scale"}\NormalTok{) }\SpecialCharTok{+}
   \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{14}\NormalTok{) }\SpecialCharTok{+}
   \FunctionTok{theme}\NormalTok{(}
     \AttributeTok{plot.title =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{face =} \StringTok{"bold"}\NormalTok{, }\AttributeTok{hjust =} \FloatTok{0.5}\NormalTok{),}
@@ -297,23 +335,19 @@ node?}\label{plot-the-degree-distribution-in-linear-linear-scale-and-in-log-log-
 \end{Highlighting}
 \end{Shaded}
 
-\begin{verbatim}
-## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
-\end{verbatim}
-
-\includegraphics{export-network_files/figure-latex/unnamed-chunk-8-1.pdf}
+\includegraphics{export-network_files/figure-latex/unnamed-chunk-9-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{\# In log{-}log scale}
-\NormalTok{deg }\OtherTok{\textless{}{-}} \FunctionTok{degree}\NormalTok{(graph)}
-\FunctionTok{ggplot}\NormalTok{(}\FunctionTok{data.frame}\NormalTok{(}\AttributeTok{deg =}\NormalTok{ deg), }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ deg)) }\SpecialCharTok{+}
-  \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{fill =} \StringTok{"\#69b3a2"}\NormalTok{, }\AttributeTok{color =} \StringTok{"white"}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.8}\NormalTok{) }\SpecialCharTok{+}
+\FunctionTok{ggplot}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =} \FunctionTok{degree}\NormalTok{(graph)),}
+                 \AttributeTok{fill =} \StringTok{"\#69b3a2"}\NormalTok{, }\AttributeTok{color =} \StringTok{"white"}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.8}\NormalTok{) }\SpecialCharTok{+}
   \FunctionTok{scale\_x\_log10}\NormalTok{() }\SpecialCharTok{+}
   \FunctionTok{scale\_y\_log10}\NormalTok{() }\SpecialCharTok{+}
   \FunctionTok{labs}\NormalTok{(}
     \AttributeTok{x =} \StringTok{"Degree (log scale)"}\NormalTok{,}
-    \AttributeTok{y =} \StringTok{"Frequency (log scale)"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{""}\NormalTok{,}
     \AttributeTok{title =} \StringTok{"Degree Distribution in Log{-}Log Scale"}
 \NormalTok{  ) }\SpecialCharTok{+}
   \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{14}\NormalTok{) }\SpecialCharTok{+}
@@ -324,24 +358,23 @@ node?}\label{plot-the-degree-distribution-in-linear-linear-scale-and-in-log-log-
 \end{Highlighting}
 \end{Shaded}
 
-\begin{verbatim}
-## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
-\end{verbatim}
+\includegraphics{export-network_files/figure-latex/unnamed-chunk-9-2.pdf}
 
-\begin{verbatim}
-## Warning in scale_y_log10(): log-10 transformation introduced infinite values.
-\end{verbatim}
-
-\begin{verbatim}
-## Warning: Removed 11 rows containing missing values or values outside the scale range
-## (`geom_bar()`).
-\end{verbatim}
-
-\includegraphics{export-network_files/figure-latex/unnamed-chunk-8-2.pdf}
+We can observe that this network \textbf{does not exhibit typical
+connectivity}: Its degree distribution is highly skewed and lacks a
+clear peak. By being its degree distribution so broad there is not a
+typical connectivity for a node. Most nodes have a very low degree,
+while a few have very high degree. We observe a power-law-like
+distribution, rather than a Poisson-like distribution, where most nodes
+would have approximately the same number of links and no hubs. This is
+what can usually be observed in social networks, but our product network
+exhibits the same, indicating that some, but few products are exported
+together with many different products by many countries, while the
+majority of products are exported only by a few countries or by highly
+specialized countries.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\# Max\_degree}
 \FunctionTok{max\_degree}\NormalTok{(graph)}
 \end{Highlighting}
 \end{Shaded}
@@ -350,22 +383,32 @@ node?}\label{plot-the-degree-distribution-in-linear-linear-scale-and-in-log-log-
 ## [1] 43
 \end{verbatim}
 
-We can observe that this network \textbf{does not exhibit typical
-connectivity}: Its degree distribution is highly skewed and lacks a
-clear peak. Most nodes have a very low degree, while a few have very
-high degree. In the log-log scale plot, we can observe a power-law-like
-distribution, which is not consistent with a Poisson-like distribution,
-where most nodes would have approximately the same number of links and
-no hubs.
+The most connected node on our network has a degree of 43.
 
-The most connected node here has a degree of 43.
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{which.max}\NormalTok{(}\FunctionTok{degree}\NormalTok{(graph))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## TRANSMISSION SHAFTS,CRANKS,BEARING HOUSINGS ETC. 
+##                                              580
+\end{verbatim}
+
+The node with the highest degree is that of mechanical components,
+indicating that there is no high specialization required to product
+this. These are indeed products that are probably going to be used to
+assemble more sophisticated goods and thus the demand for this product
+is high everywhere and its supply chain is likely to be very globalized
+with many countries producing them.
 
 \subsection{4. What is the clustering coefficient (transitivity) in the
 network?}\label{what-is-the-clustering-coefficient-transitivity-in-the-network}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{transitivity}\NormalTok{(graph)}
+\FunctionTok{transitivity}\NormalTok{(graph, }\AttributeTok{type =} \StringTok{"global"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -374,7 +417,10 @@ network?}\label{what-is-the-clustering-coefficient-transitivity-in-the-network}
 \end{verbatim}
 
 The global transitivity of this network is 0.4297, which is closer to 0
-than to 1, indicating a relatively low tendency of clustering.
+than to 1, indicating a modest tendency of clustering. Less than half of
+the time, when two nodes share a common neighbor, they will also be
+directly connected to each other. This could indicate that not always
+countries tend to specialize on the same products.
 
 \subsection{5. What is the assortativity (degree) in the
 network?}\label{what-is-the-assortativity-degree-in-the-network}
@@ -411,9 +457,9 @@ modularity?}\label{using-the-louvain-method-does-the-network-have-a-community-st
 \begin{verbatim}
 ## Community sizes
 ##   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20 
-##  57 110  10  58 140  46  66  97  14   8  18   4  17  16   3  13  13   8  16  11 
-##  21  22  23  24  25  26  27  28  29 
-##   6   8   6   9   6   3   5   3   3
+##  57 148  30  58 123  46  66  97  14   8  18   4  16   3   3  13  13   8   5   5 
+##  21  22  23  24  25  26  27  28 
+##   8   5   9   2   6   3   3   3
 \end{verbatim}
 
 \begin{Shaded}
@@ -423,32 +469,45 @@ modularity?}\label{using-the-louvain-method-does-the-network-have-a-community-st
 \end{Shaded}
 
 \begin{verbatim}
-## [1] 0.7407729
+## [1] 0.7439031
 \end{verbatim}
+
+Yes, the network has a clear community structure. Using the Louvain
+method, the network was partitioned into more than 20 communities. The
+modularity value is \textbf{\textgreater0.7}, which is considered high
+and indicates a strong modular (community) structure within the network.
+
+We can also try to visualize these communities:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\# Only display labels for nodes of a degree higher than or equal to 30}
-\FunctionTok{V}\NormalTok{(graph)}\SpecialCharTok{$}\NormalTok{label }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(deg }\SpecialCharTok{\textgreater{}=} \DecValTok{30}\NormalTok{, }\FunctionTok{V}\NormalTok{(graph)}\SpecialCharTok{$}\NormalTok{name, }\ConstantTok{NA}\NormalTok{)}
-\CommentTok{\# Generate random angles for lables to avoid overlapping}
-\NormalTok{random\_angles }\OtherTok{\textless{}{-}} \FunctionTok{runif}\NormalTok{(}\FunctionTok{length}\NormalTok{(}\FunctionTok{V}\NormalTok{(graph)), }\DecValTok{0}\NormalTok{, }\DecValTok{2} \SpecialCharTok{*}\NormalTok{ pi)}
-\CommentTok{\# Plotting}
+\NormalTok{layout }\OtherTok{\textless{}{-}} \FunctionTok{layout\_with\_kk}\NormalTok{(graph)}
+
+\CommentTok{\# Using igraph only}
 \FunctionTok{plot}\NormalTok{(louvain\_cluster, graph,}
-     \AttributeTok{vertex.label =} \FunctionTok{V}\NormalTok{(graph)}\SpecialCharTok{$}\NormalTok{label,}
-     \AttributeTok{vertex.label.cex =} \FloatTok{0.7}\NormalTok{,}
-     \AttributeTok{vertex.label.color =} \StringTok{"black"}\NormalTok{,}
-     \AttributeTok{vertex.label.dist =} \DecValTok{2}\NormalTok{,  }
-     \AttributeTok{vertex.label.degree =}\NormalTok{ random\_angles  )}
+     \AttributeTok{layout =}\NormalTok{ layout,}
+     \AttributeTok{vertex.size =} \FloatTok{0.1}\NormalTok{,}
+     \AttributeTok{edge.width =} \FloatTok{0.1}\NormalTok{,}
+     \AttributeTok{vertex.label =} \StringTok{""}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{export-network_files/figure-latex/unnamed-chunk-11-1.pdf}
+\includegraphics{export-network_files/figure-latex/unnamed-chunk-15-1.pdf}
 
-Yes, the network has a clear community structure. Using the Louvain
-method, the network was partitioned into multiple communities, as the
-plot indicates. The modularity value is \textbf{0.7466}, which is
-considered high and indicates a strong modular (community) structure
-within the network.
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Using ggraph}
+\NormalTok{graph\_tbl }\OtherTok{\textless{}{-}} \FunctionTok{as\_tbl\_graph}\NormalTok{(graph)}
+\FunctionTok{V}\NormalTok{(graph\_tbl)}\SpecialCharTok{$}\NormalTok{community }\OtherTok{\textless{}{-}} \FunctionTok{membership}\NormalTok{(louvain\_cluster)}
+\FunctionTok{ggraph}\NormalTok{(graph\_tbl, }\AttributeTok{layout =} \StringTok{"kk"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_edge\_link}\NormalTok{(}\AttributeTok{width =} \FloatTok{0.1}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.7}\NormalTok{, }\AttributeTok{color =} \StringTok{"grey"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_node\_point}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{color =} \FunctionTok{as.factor}\NormalTok{(community)), }\AttributeTok{size =} \FloatTok{1.5}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_void}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{export-network_files/figure-latex/unnamed-chunk-15-2.pdf}
 
 \subsection{7. Test that the clustering coefficient in the network
 cannot be statistically explain by a configuration model in which the
@@ -461,11 +520,15 @@ original.}\label{test-that-the-clustering-coefficient-in-the-network-cannot-be-s
 \end{Highlighting}
 \end{Shaded}
 
+Create 1000 random configuration models and register the clustering
+coefficient for each one of this generated model.
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\# Create 100 random configuration models and register the clustering coefficient}
-\NormalTok{num\_simulations }\OtherTok{\textless{}{-}} \DecValTok{100}
+\NormalTok{num\_simulations }\OtherTok{\textless{}{-}} \DecValTok{1000}
+\CommentTok{\# Initializing a vector}
 \NormalTok{simulated\_clustering }\OtherTok{\textless{}{-}} \FunctionTok{numeric}\NormalTok{(num\_simulations)}
+\CommentTok{\# Simulating the graphs and saving their transitivity}
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{num\_simulations) \{}
 \NormalTok{  config\_graph }\OtherTok{\textless{}{-}} \FunctionTok{sample\_degseq}\NormalTok{(}\FunctionTok{degree}\NormalTok{(graph), }\AttributeTok{method =} \StringTok{"vl"}\NormalTok{)  }
 \NormalTok{  simulated\_clustering[i] }\OtherTok{\textless{}{-}} \FunctionTok{transitivity}\NormalTok{(config\_graph, }\AttributeTok{type =} \StringTok{"global"}\NormalTok{)}
@@ -473,58 +536,61 @@ original.}\label{test-that-the-clustering-coefficient-in-the-network-cannot-be-s
 \end{Highlighting}
 \end{Shaded}
 
-Here we use the method ``vl'' (Viger--Latapy) instead of the traditional
-one, ``configuration'', in order to avoid multi-edges and self-loops. As
-a consequence, we don't need to add too many more checks in the loop
-like is.simple().
+Here we use the method ``vl'' (Viger--Latapy) as it is the one suggested
+for undirected connected graphs.
+
+Once we have generated the networks we want to proceed with evaluation
+and test of statistical difference.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{\# Evaluation and statistical test}
-\CommentTok{\# Calculate the p value：clustering coefficient of the simulated network VS random configuration model}
-\NormalTok{p\_value }\OtherTok{\textless{}{-}} \FunctionTok{mean}\NormalTok{(simulated\_clustering }\SpecialCharTok{\textgreater{}=}\NormalTok{ original\_clustering)}
-
-\CommentTok{\# Output}
-\FunctionTok{cat}\NormalTok{(}\StringTok{"Clustering coefficient of the original network: "}\NormalTok{, original\_clustering, }\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\NormalTok{original\_clustering}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## Clustering coefficient of the original network:  0.429691
+## [1] 0.429691
 \end{verbatim}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{cat}\NormalTok{(}\StringTok{"Mean clustering coefficient of the configuration network: "}\NormalTok{, }\FunctionTok{mean}\NormalTok{(simulated\_clustering), }\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\FunctionTok{mean}\NormalTok{(simulated\_clustering)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## Mean clustering coefficient of the configuration network:  0.03444034
+## [1] 0.03402928
 \end{verbatim}
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{cat}\NormalTok{(}\StringTok{"p value:"}\NormalTok{, p\_value, }\StringTok{"}\SpecialCharTok{\textbackslash{}n}\StringTok{"}\NormalTok{)}
+\FunctionTok{t.test}\NormalTok{(}\AttributeTok{x =}\NormalTok{ simulated\_clustering, }\AttributeTok{mu =}\NormalTok{ original\_clustering, }\AttributeTok{alternative =} \StringTok{"two.sided"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## p value: 0
+## 
+##  One Sample t-test
+## 
+## data:  simulated_clustering
+## t = -4845.7, df = 999, p-value < 2.2e-16
+## alternative hypothesis: true mean is not equal to 0.429691
+## 95 percent confidence interval:
+##  0.03386905 0.03418951
+## sample estimates:
+##  mean of x 
+## 0.03402928
 \end{verbatim}
 
 We tested whether the clustering coefficient of the original network can
 be explained solely by its degree distribution, by comparing it to 1000
 configuration model networks with the same degree sequence. The original
 network's clustering coefficient was \textbf{0.4297}, while the average
-clustering coefficient from the configuration models was
-\textbf{0.0342}. The p-value is \textbf{0}, indicating that none of the
-simulated networks reached the original clustering level.
+clustering coefficient from the configuration models was \textbf{0.034}.
 
-\textbf{Therefore, we reject the null hypothesis} and conclude that the
-clustering structure in the original network \textbf{cannot be
-explained} by degree distribution alone --- it has significant
-non-random structure.
+Therefore we can conclude that the clustering structure in the original
+network \textbf{cannot be explained} by degree distribution alone --- it
+has significant non-random structure peculiar to the network.
 
 \subsection{8. Visualize the neighborhood of the node with the largest
 centrality
@@ -542,60 +608,60 @@ centrality
 \end{verbatim}
 
 We discovered that the node with the largest centrality/closeness is
-``SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS''.
+``SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS''. Apparently these are
+insulating materials coming from minerals.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\FunctionTok{neighbors}\NormalTok{(graph,}\StringTok{"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"}\NormalTok{)}
+\FunctionTok{head}\NormalTok{(}\FunctionTok{neighbors}\NormalTok{(graph,}\StringTok{"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"}\NormalTok{))}
 \end{Highlighting}
 \end{Shaded}
 
 \begin{verbatim}
-## + 27/774 vertices, named, from 15427f0:
-##  [1] TRAILERS & SPECIALLY DESIGNED CONTAINERS          
-##  [2] PARTS OF THE MACHINERY OF 723.41 TO 723.46        
-##  [3] MATERIALS OF RUBBER(E.G.,PASTES.PLATES,SHEETS,ETC)
-##  [4] OTHER VEHICLES,NOT MECHANICALLY PROPELLED,PARTS   
-##  [5] PARTS OF THE MACHINERY OF 744.2-                  
-##  [6] MISCELLANEOUS ART.OF MATERIALS OF DIV.58          
-##  [7] POULTRY, LIVE (I.E., FOWLS, DUCKS, GEESE, ETC.)   
-##  [8] COLOUR.PREPTNS OF A KIND USED IN CERAMIC,ENAMELLI.
-##  [9] VARNISHES AND LACOUERS;DISTEMPERS,WATER PIGMENTS  
-## [10] FABRICS OF GLASS FIBRE,PILE FAB.TULLE,LACE,KNITTED
-## + ... omitted several vertices
+## + 6/774 vertices, named, from 0ef3264:
+## [1] TRAILERS & SPECIALLY DESIGNED CONTAINERS          
+## [2] PARTS OF THE MACHINERY OF 723.41 TO 723.46        
+## [3] MATERIALS OF RUBBER(E.G.,PASTES.PLATES,SHEETS,ETC)
+## [4] OTHER VEHICLES,NOT MECHANICALLY PROPELLED,PARTS   
+## [5] PARTS OF THE MACHINERY OF 744.2-                  
+## [6] MISCELLANEOUS ART.OF MATERIALS OF DIV.58
 \end{verbatim}
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{neigh\_graph }\OtherTok{\textless{}{-}} \FunctionTok{make\_neighborhood\_graph}\NormalTok{(graph, }\AttributeTok{order =} \DecValTok{1}\NormalTok{, }\StringTok{"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"}\NormalTok{)[[}\DecValTok{1}\NormalTok{]]}
+These are some of the neighbors of our node of interest.
 
-\CommentTok{\# without the following plot won\textquotesingle{}t work}
-\FunctionTok{V}\NormalTok{(neigh\_graph)}\SpecialCharTok{$}\NormalTok{color }\OtherTok{\textless{}{-}} \FunctionTok{trimws}\NormalTok{(}\FunctionTok{V}\NormalTok{(neigh\_graph)}\SpecialCharTok{$}\NormalTok{color)}
-\FunctionTok{E}\NormalTok{(neigh\_graph)}\SpecialCharTok{$}\NormalTok{color }\OtherTok{\textless{}{-}} \FunctionTok{trimws}\NormalTok{(}\FunctionTok{E}\NormalTok{(neigh\_graph)}\SpecialCharTok{$}\NormalTok{color)}
-
-\FunctionTok{plot}\NormalTok{(neigh\_graph)}
-\end{Highlighting}
-\end{Shaded}
-
-\includegraphics{export-network_files/figure-latex/unnamed-chunk-16-1.pdf}
+We'll now plot its neighbors.
 
 \begin{Shaded}
 \begin{Highlighting}[]
+\NormalTok{neigh\_graph }\OtherTok{\textless{}{-}} \FunctionTok{make\_neighborhood\_graph}\NormalTok{(graph,}
+                                       \AttributeTok{order =} \DecValTok{1}\NormalTok{, }
+                                       \StringTok{"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"}\NormalTok{)[[}\DecValTok{1}\NormalTok{]]}
+
 \NormalTok{g }\OtherTok{\textless{}{-}} \FunctionTok{as\_tbl\_graph}\NormalTok{(neigh\_graph)}
 
 \FunctionTok{ggraph}\NormalTok{(g, }\AttributeTok{layout =} \StringTok{\textquotesingle{}fr\textquotesingle{}}\NormalTok{) }\SpecialCharTok{+}
   \FunctionTok{geom\_edge\_link}\NormalTok{(}\AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{, }\AttributeTok{width =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
-  \FunctionTok{geom\_node\_point}\NormalTok{(}\AttributeTok{size =} \DecValTok{5}\NormalTok{, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{color =}\NormalTok{ name }\SpecialCharTok{==} \StringTok{"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"}\NormalTok{)) }\SpecialCharTok{+}
-  \FunctionTok{geom\_node\_text}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{label =}\NormalTok{ name), }\AttributeTok{repel =} \ConstantTok{TRUE}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{, }\AttributeTok{color =} \StringTok{"steelblue4"}\NormalTok{) }\SpecialCharTok{+}
+  \CommentTok{\# Colouring of a different colour our central node}
+  \FunctionTok{geom\_node\_point}\NormalTok{(}\AttributeTok{size =} \DecValTok{5}\NormalTok{, }
+                  \FunctionTok{aes}\NormalTok{(}\AttributeTok{color =}\NormalTok{ name }\SpecialCharTok{==} \StringTok{"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_node\_text}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{label =}\NormalTok{ name), }
+                 \AttributeTok{repel =} \ConstantTok{TRUE}\NormalTok{, }
+                 \AttributeTok{size =} \DecValTok{3}\NormalTok{, }
+                 \AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{, }
+                 \AttributeTok{check\_overlap =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{+}
   \FunctionTok{guides}\NormalTok{(}\AttributeTok{color =} \StringTok{"none"}\NormalTok{) }\SpecialCharTok{+}    
   \FunctionTok{theme\_void}\NormalTok{()}\SpecialCharTok{+}
   \FunctionTok{labs}\NormalTok{(}\AttributeTok{title =} \StringTok{"Neighborhood of Node with Highest Closeness Centrality"}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{export-network_files/figure-latex/unnamed-chunk-16-2.pdf}
+\includegraphics{export-network_files/figure-latex/unnamed-chunk-22-1.pdf}
 
-We also used the ``visNetwork'' package to make an interactive graph:
+This plot looks a little bit messy, as the labels are quite long and
+difficult to read. However, if we hide all the labels, we lose a lot of
+valuable information. Therefore, we decided to use the visNetwork
+package to create an interactive graph, which allows us to freely drag
+nodes around and better explore the names of each node:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -604,7 +670,7 @@ We also used the ``visNetwork'' package to make an interactive graph:
 \NormalTok{edges }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{from =} \FunctionTok{as.character}\NormalTok{(}\FunctionTok{ends}\NormalTok{(g, }\FunctionTok{E}\NormalTok{(g))[,}\DecValTok{1}\NormalTok{]), }\AttributeTok{to =} \FunctionTok{as.character}\NormalTok{(}\FunctionTok{ends}\NormalTok{(g, }\FunctionTok{E}\NormalTok{(g))[,}\DecValTok{2}\NormalTok{]))}
 
 \FunctionTok{visNetwork}\NormalTok{(nodes, edges) }\SpecialCharTok{\%\textgreater{}\%}
-  \FunctionTok{visEdges}\NormalTok{(}\AttributeTok{arrows =} \StringTok{\textquotesingle{}to\textquotesingle{}}\NormalTok{, }\AttributeTok{color =} \FunctionTok{list}\NormalTok{(}\AttributeTok{color =} \StringTok{"gray"}\NormalTok{, }\AttributeTok{hover =} \StringTok{"red"}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{visEdges}\NormalTok{(}\AttributeTok{color =} \FunctionTok{list}\NormalTok{(}\AttributeTok{color =} \StringTok{"gray"}\NormalTok{, }\AttributeTok{hover =} \StringTok{"red"}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{visNodes}\NormalTok{(}\AttributeTok{size =} \DecValTok{15}\NormalTok{, }\AttributeTok{color =} \FunctionTok{list}\NormalTok{(}\AttributeTok{background =} \StringTok{"lightblue"}\NormalTok{, }\AttributeTok{border =} \StringTok{"darkblue"}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{visOptions}\NormalTok{(}\AttributeTok{highlightNearest =} \ConstantTok{TRUE}\NormalTok{, }\AttributeTok{nodesIdSelection =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{visLayout}\NormalTok{(}\AttributeTok{randomSeed =} \DecValTok{123}\NormalTok{)}
@@ -612,9 +678,12 @@ We also used the ``visNetwork'' package to make an interactive graph:
 \end{Shaded}
 
 \begin{verbatim}
-## file:////private/var/folders/5k/zh67w_yx2fj10t7z34l2ct7m0000gn/T/Rtmp7TOv65/file3bdf3f1d26e4/widget3bdf12e4631b.html screenshot completed
+## file:////private/var/folders/5k/zh67w_yx2fj10t7z34l2ct7m0000gn/T/RtmpzAAnHd/file13427a1bc9d6/widget134236603f3b.html screenshot completed
 \end{verbatim}
 
-\includegraphics{export-network_files/figure-latex/unnamed-chunk-17-1.pdf}
+\includegraphics{export-network_files/figure-latex/unnamed-chunk-23-1.pdf}
+
+NOTE: As these is a \texttt{.pdf} document we are only able to show a
+screeenshot of the graph
 
 \end{document}
