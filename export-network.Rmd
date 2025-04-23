@@ -1,7 +1,18 @@
 ---
-title: "export-network"
-output: html_document
-date: ""
+title: "Social network analysis hw1: export-network"
+author: "Yijia Lin, Diego Paroli"
+date: "2025-04-23"
+output:
+  html_document: default
+  pdf_document:
+    latex_engine: xelatex
+    keep_tex: true
+knitr:
+  opts_chunk:
+    screenshot.force: true
+editor_options:
+  markdown:
+    wrap: 72
 ---
 
 # Libraries
@@ -11,15 +22,18 @@ rm(list = ls())
 library(tidyverse)
 library(httr2)
 library(igraph)
+library(tidygraph)
+library(ggraph)
+library(visNetwork)
 ```
-
 
 # Get the data
 
-I have commented below to avoid calling it every time we render the document
+I have commented below to avoid calling it every time we render the
+document
 
 ```{r}
-# zip_data <- request("https://networks.skewed.de/net/product_space/files/SITC.csv.zip") |> 
+# zip_data <- request("https://networks.skewed.de/net/product_space/files/SITC.csv.zip") |>
 #   req_perform()
 # 
 # writeBin(resp_body_raw(zip_data), "exports_SITC.csv.zip")
@@ -28,7 +42,6 @@ I have commented below to avoid calling it every time we render the document
 # 
 # file.remove("exports_SITC.csv.zip", )
 ```
-
 
 ```{r, message=FALSE, warning=FALSE}
 nodes <- read_csv("network-data/nodes.csv")
@@ -40,65 +53,115 @@ head(nodes)
 head(links)
 ```
 
-Description of the dataset:
+# Description of the dataset
 
-Network of economic products, where a pair of products are connected if they are exported at similar rates by the same countries. The data are a projection from a bipartite network of nations and the products they export. Edges weights represent a similarity score (called "proximity"). Data based on UN Comtrade worldwide trade patterns. SITC network based on the Standard International Trade Classification.
+Network of economic products, where a pair of products are connected if
+they are exported at similar rates by the same countries. The data are a
+projection from a bipartite network of nations and the products they
+export. Edges weights represent a similarity score (called "proximity").
+Data based on UN Comtrade worldwide trade patterns. SITC network based
+on the Standard International Trade Classification.
 
-Properties:
+### Properties:
 
 Weighted, Undirected
 
-Graph:
+### Graph:
 
 ```{r}
 graph <- graph_from_data_frame(links, directed = FALSE, vertices = nodes)
 graph
 ```
 
+# Questions
 
-1. What is the number of nodes and links?
+## 1. What is the number of nodes and links?
 
 ```{r}
 vcount(graph)
 ecount(graph)
 ```
 
-2. What is the average degree in the network? And the standard deviation of
-the degree?
+There are in total 774 nodes and 1779 links in this network.
+
+## 2. What is the average degree in the network? And the standard deviation of the degree?
 
 ```{r}
 mean(degree(graph))
 sd(degree(graph))
 ```
 
-3. Plot the degree distribution in linear-linear scale and in log-log-scale. Does it
-have a typical connectivity? What is the degree of the most connected
-node?
+The average degree is 4.5969 in this network, with a standard deviation
+of 5.9948.
+
+## 3. Plot the degree distribution in linear-linear scale and in log-log-scale. Does it have a typical connectivity? What is the degree of the most connected node?
 
 ```{r}
-# To be improved
+# In linear-linear scale
 ggplot() + 
-  geom_histogram(aes(x = degree(graph))) + 
-  #geom_density(aes(x = degree(graph))) +
-  labs(x = "Degree", y = "", title = "Degree distribution")
-# To be done in log-log...
+  geom_histogram(aes(x = degree(graph)),
+                 fill = "#69b3a2", color = "white", alpha = 0.8) + 
+  labs(x = "Degree", y = "", title = "Degree distribution in linear-linear scale")+
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  )
 
+# In log-log scale
+deg <- degree(graph)
+ggplot(data.frame(deg = deg), aes(x = deg)) +
+  geom_histogram(fill = "#69b3a2", color = "white", alpha = 0.8) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = "Degree (log scale)",
+    y = "Frequency (log scale)",
+    title = "Degree Distribution in Log-Log Scale"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  )
+
+# Max_degree
 max_degree(graph)
 ```
 
-4. What is the clustering coefficient (transitivity) in the network?
+We can observe that this network **does not exhibit typical
+connectivity**: Its degree distribution is highly skewed and lacks a
+clear peak. Most nodes have a very low degree, while a few have very
+high degree. In the log-log scale plot, we can observe a power-law-like
+distribution, which is not consistent with a Poisson-like distribution,
+where most nodes would have approximately the same number of links and
+no hubs.
+
+The most connected node here has a degree of 43.
+
+## 4. What is the clustering coefficient (transitivity) in the network?
 
 ```{r}
 transitivity(graph)
 ```
 
-5. What is the assortativity (degree) in the network?
+The global transitivity of this network is 0.4297, which is closer to 0
+than to 1, indicating a relatively low tendency of clustering.
+
+## 5. What is the assortativity (degree) in the network?
 
 ```{r}
 assortativity_degree(graph)
 ```
 
-6. Using the Louvain method, does the network have a community structure? If so, what is its modularity?
+The assortativity coefficient of this network is 0.4571 (greater than
+0), indicating a moderate to strong tendency for nodes to connect with
+others that have a similar degree. In other words, high-degree nodes
+tend to connect with other high-degree nodes, and low-degree nodes tend
+to connect with other low-degree nodes. This is a sign of assortative
+mixing.
+
+## 6. Using the Louvain method, does the network have a community structure? If so, what is its modularity?
 
 ```{r}
 louvain_cluster <- cluster_louvain(graph, weights = E(graph)$width)
@@ -107,32 +170,81 @@ sizes(louvain_cluster)
 
 modularity(louvain_cluster)
 
-# Labels of nodes need to be deleted
-plot(louvain_cluster, graph)
-
-
+# Only display labels for nodes of a degree higher than or equal to 30
+V(graph)$label <- ifelse(deg >= 30, V(graph)$name, NA)
+# Generate random angles for lables to avoid overlapping
+random_angles <- runif(length(V(graph)), 0, 2 * pi)
+# Plotting
+plot(louvain_cluster, graph,
+     vertex.label = V(graph)$label,
+     vertex.label.cex = 0.7,
+     vertex.label.color = "black",
+     vertex.label.dist = 2,  
+     vertex.label.degree = random_angles  )
+  
 ```
 
+Yes, the network has a clear community structure. Using the Louvain
+method, the network was partitioned into multiple communities, as the
+plot indicates. The modularity value is **0.7466**, which is considered
+high and indicates a strong modular (community) structure within the
+network.
 
-7. Test that the clustering coefficient in the network cannot be statistically
-explain by a configuration model in which the nodes have the same degree
-distribution as the original.
+## 7. Test that the clustering coefficient in the network cannot be statistically explain by a configuration model in which the nodes have the same degree distribution as the original.
 
 ```{r}
-graph_config <- sample_degseq(degree(graph), method="configuration") # other methods?
-
-transitivity(graph_config)
-
-# Statistical test (T-test?)?
+original_clustering <- transitivity(graph, type = "global")
 ```
 
+```{r}
+# Create 100 random configuration models and register the clustering coefficient
+num_simulations <- 100
+simulated_clustering <- numeric(num_simulations)
+for (i in 1:num_simulations) {
+  config_graph <- sample_degseq(degree(graph), method = "vl")  
+  simulated_clustering[i] <- transitivity(config_graph, type = "global")
+}
+```
 
-8. Visualize the neighborhood of the node with the largest centrality
-(closeness)
+Here we use the method "vl" (Viger–Latapy) instead of the traditional
+one, "configuration", in order to avoid multi-edges and self-loops. As a
+consequence, we don't need to add too many more checks in the loop like
+is.simple().
+
+```{r}
+# Evaluation and statistical test
+# Calculate the p value：clustering coefficient of the simulated network VS random configuration model
+p_value <- mean(simulated_clustering >= original_clustering)
+
+# Output
+cat("Clustering coefficient of the original network: ", original_clustering, "\n")
+cat("Mean clustering coefficient of the configuration network: ", mean(simulated_clustering), "\n")
+cat("p value:", p_value, "\n")
+
+```
+
+We tested whether the clustering coefficient of the original network can
+be explained solely by its degree distribution, by comparing it to 1000
+configuration model networks with the same degree sequence. The original
+network’s clustering coefficient was **0.4297**, while the average
+clustering coefficient from the configuration models was **0.0342**. The
+p-value is **0**, indicating that none of the simulated networks reached
+the original clustering level.
+
+**Therefore, we reject the null hypothesis** and conclude that the
+clustering structure in the original network **cannot be explained** by
+degree distribution alone — it has significant non-random structure.
+
+## 8. Visualize the neighborhood of the node with the largest centrality (closeness)
 
 ```{r}
 which.max(closeness(graph))
+```
 
+We discovered that the node with the largest centrality/closeness is
+"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS".
+
+```{r}
 neighbors(graph,"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")
 
 neigh_graph <- make_neighborhood_graph(graph, order = 1, "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")[[1]]
@@ -140,9 +252,32 @@ neigh_graph <- make_neighborhood_graph(graph, order = 1, "SLAG WOOL.ROCK WOOL AN
 # without the following plot won't work
 V(neigh_graph)$color <- trimws(V(neigh_graph)$color)
 E(neigh_graph)$color <- trimws(E(neigh_graph)$color)
+
 plot(neigh_graph)
 
-# Check + something more?
+
+
+g <- as_tbl_graph(neigh_graph)
+
+ggraph(g, layout = 'fr') +
+  geom_edge_link(alpha = 0.5, width = 1) +
+  geom_node_point(size = 5, aes(color = name == "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")) +
+  geom_node_text(aes(label = name), repel = TRUE, size = 3, color = "steelblue4") +
+  guides(color = "none") +    
+  theme_void()+
+  labs(title = "Neighborhood of Node with Highest Closeness Centrality")
 ```
 
+We also used the "visNetwork" package to make an interactive graph:
 
+```{r}
+library(visNetwork)
+nodes <- data.frame(id = V(g)$name, label = V(g)$name)
+edges <- data.frame(from = as.character(ends(g, E(g))[,1]), to = as.character(ends(g, E(g))[,2]))
+
+visNetwork(nodes, edges) %>%
+  visEdges(arrows = 'to', color = list(color = "gray", hover = "red")) %>%
+  visNodes(size = 15, color = list(background = "lightblue", border = "darkblue")) %>%
+  visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE) %>%
+  visLayout(randomSeed = 123)
+```
