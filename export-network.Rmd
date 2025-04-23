@@ -279,21 +279,21 @@ mean(simulated_clustering)
 
 The two values seem to be really different from each other, but we want
 to proceed with a more statistically sound test (t-test), checking
-whether the observed clustering coefficient is significantly greater
-than what would be expected under a random graph with the same degree
-distribution.
+whether the clustering coefficients obtained under a random graph with
+the same degree distribution are significantly lower than the original
+clustering coefficient.
 
 ```{r}
 t.test(x = simulated_clustering, mu = original_clustering, alternative = "less")
 ```
 
 We tested whether the clustering coefficient of the original network can
-be explained solely by its degree distribution, by comparing it to 1000
+be explained solely by its degree distribution by comparing it to 1000
 configuration model networks with the same degree distribution. The
 original network’s clustering coefficient was **0.42**, while the
 average clustering coefficient from the configuration models was
-**0.034**. The result of the t-test showed that the observed value is
-significantly higher than the expected values under the null model
+**0.034**. The result of the t-test showed that the synthetic values are
+significantly lower than the original value under the null model
 (p-value \< 0.01). This allows us to reject the null hypothesis, and
 conclude that the clustering structure in the original network **cannot
 be explained** by degree distribution alone — it has significant
