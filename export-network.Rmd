@@ -1,12 +1,12 @@
 ---
-title: "Social network analysis hw1: export-network"
+title: "Social network analysis HW1: export-network"
 author: "Yijia Lin, Diego Paroli"
 date: "2025-04-23"
 output:
-  html_document: default
   pdf_document:
     latex_engine: xelatex
     keep_tex: true
+  html_document: default
 knitr:
   opts_chunk:
     screenshot.force: true
@@ -22,15 +22,14 @@ rm(list = ls())
 library(tidyverse)
 library(httr2)
 library(igraph)
+library(visNetwork)
 library(tidygraph)
 library(ggraph)
-library(visNetwork)
 ```
 
 # Get the data
 
-I have commented below to avoid calling it every time we render the
-document
+Data has been obtained following the procedure in the chunk below. The code is commented to avoid repeating the download every time the notebok is run. 
 
 ```{r}
 # zip_data <- request("https://networks.skewed.de/net/product_space/files/SITC.csv.zip") |>
@@ -48,23 +47,24 @@ nodes <- read_csv("network-data/nodes.csv")
 links <- read_csv("network-data/edges.csv")
 ```
 
+# Description of the dataset
+
+Our network represents economic products. Two products are connected if two or more countries export both products in significant quantities (above world average). The meaning of a link is that two products are connected if the same countries “specialize” in making them, hence, basically, products are connected if they require the same capabilities to be made. Edges weights represent a similarity score (called "proximity"). Data is based on UN Comtrade worldwide trade patterns using the SITC (Standard International Trade Classification) for classifying product categories.
+
+Source: [The Product Space](https://www.michelecoscia.com/?page_id=223).
+
+### Properties:
+
+Weighted, Undirected
+
+### Nodes and links 
+
 ```{r}
 head(nodes)
 head(links)
 ```
 
-# Description of the dataset
-
-Network of economic products, where a pair of products are connected if
-they are exported at similar rates by the same countries. The data are a
-projection from a bipartite network of nations and the products they
-export. Edges weights represent a similarity score (called "proximity").
-Data based on UN Comtrade worldwide trade patterns. SITC network based
-on the Standard International Trade Classification.
-
-### Properties:
-
-Weighted, Undirected
+Most of the columns in the `nodes` dataset will not be useful for us. The column `# index` is the one indicating the index of the nodes and the column `name` is the one indicating their corresponding name. In the `links` dataframe, the column `# source` and `target` indicate the 2 nodes forming a link, while `width` is the weight of that link.  
 
 ### Graph:
 
@@ -82,7 +82,14 @@ vcount(graph)
 ecount(graph)
 ```
 
-There are in total 774 nodes and 1779 links in this network.
+There are in total 774 nodes (i.e. economic product) and 1779 links in this network.
+
+```{r}
+components <- components(graph)
+head(components$no)
+```
+
+Our graph is fully connected i.e. it forms one single connected component.
 
 ## 2. What is the average degree in the network? And the standard deviation of the degree?
 
@@ -94,14 +101,18 @@ sd(degree(graph))
 The average degree is 4.5969 in this network, with a standard deviation
 of 5.9948.
 
+This means that on average every product is connected to 4/5 other products. Standard deviation seems to be high (higher than the mean), therefore indicating that there could be both products with a lot of edges and products with just one edge.
+
 ## 3. Plot the degree distribution in linear-linear scale and in log-log-scale. Does it have a typical connectivity? What is the degree of the most connected node?
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 # In linear-linear scale
 ggplot() + 
   geom_histogram(aes(x = degree(graph)),
                  fill = "#69b3a2", color = "white", alpha = 0.8) + 
-  labs(x = "Degree", y = "", title = "Degree distribution in linear-linear scale")+
+  labs(x = "Degree", 
+       y = "", 
+       title = "Degree distribution in linear-linear scale") +
   theme_minimal(base_size = 14) +
   theme(
     plot.title = element_text(face = "bold", hjust = 0.5),
@@ -109,14 +120,14 @@ ggplot() +
   )
 
 # In log-log scale
-deg <- degree(graph)
-ggplot(data.frame(deg = deg), aes(x = deg)) +
-  geom_histogram(fill = "#69b3a2", color = "white", alpha = 0.8) +
+ggplot() +
+  geom_histogram(aes(x = degree(graph)),
+                 fill = "#69b3a2", color = "white", alpha = 0.8) +
   scale_x_log10() +
   scale_y_log10() +
   labs(
     x = "Degree (log scale)",
-    y = "Frequency (log scale)",
+    y = "",
     title = "Degree Distribution in Log-Log Scale"
   ) +
   theme_minimal(base_size = 14) +
@@ -124,29 +135,29 @@ ggplot(data.frame(deg = deg), aes(x = deg)) +
     plot.title = element_text(face = "bold", hjust = 0.5),
     axis.title = element_text(face = "bold")
   )
+```
 
-# Max_degree
+We can observe that this network **does not exhibit typical connectivity**: Its degree distribution is highly skewed and lacks a clear peak. By being its degree distribution so broad there is not a typical connectivity for a node. Most nodes have a very low degree, while a few have very high degree. We observe a power-law-like distribution, rather than a Poisson-like distribution, where most nodes would have approximately the same number of links and no hubs. This is what can usually be observed in social networks, but our product network exhibits the same, indicating that some, but few products are exported together with many different products by many countries, while the majority of products are exported only by a few countries or by highly specialized countries. 
+
+```{r}
 max_degree(graph)
 ```
 
-We can observe that this network **does not exhibit typical
-connectivity**: Its degree distribution is highly skewed and lacks a
-clear peak. Most nodes have a very low degree, while a few have very
-high degree. In the log-log scale plot, we can observe a power-law-like
-distribution, which is not consistent with a Poisson-like distribution,
-where most nodes would have approximately the same number of links and
-no hubs.
+The most connected node on our network has a degree of 43.
 
-The most connected node here has a degree of 43.
+```{r}
+which.max(degree(graph))
+```
+
+The node with the highest degree is that of mechanical components, indicating that there is no high specialization required to product this. These are indeed products that are probably going to be used to assemble more sophisticated goods and thus the demand for this product is high everywhere and its supply chain is likely to be very globalized with many countries producing them.
 
 ## 4. What is the clustering coefficient (transitivity) in the network?
 
 ```{r}
-transitivity(graph)
+transitivity(graph, type = "global")
 ```
 
-The global transitivity of this network is 0.4297, which is closer to 0
-than to 1, indicating a relatively low tendency of clustering.
+The global transitivity of this network is 0.4297, which is closer to 0 than to 1, indicating a modest tendency of clustering. Less than half of the time, when two nodes share a common neighbor, they will also be directly connected to each other. This could indicate that not always countries tend to specialize on the same products.
 
 ## 5. What is the assortativity (degree) in the network?
 
@@ -169,26 +180,31 @@ louvain_cluster <- cluster_louvain(graph, weights = E(graph)$width)
 sizes(louvain_cluster)
 
 modularity(louvain_cluster)
-
-# Only display labels for nodes of a degree higher than or equal to 30
-V(graph)$label <- ifelse(deg >= 30, V(graph)$name, NA)
-# Generate random angles for lables to avoid overlapping
-random_angles <- runif(length(V(graph)), 0, 2 * pi)
-# Plotting
-plot(louvain_cluster, graph,
-     vertex.label = V(graph)$label,
-     vertex.label.cex = 0.7,
-     vertex.label.color = "black",
-     vertex.label.dist = 2,  
-     vertex.label.degree = random_angles  )
-  
 ```
 
-Yes, the network has a clear community structure. Using the Louvain
-method, the network was partitioned into multiple communities, as the
-plot indicates. The modularity value is **0.7466**, which is considered
-high and indicates a strong modular (community) structure within the
-network.
+Yes, the network has a clear community structure. Using the Louvain method, the network was partitioned into more than 20 communities. The modularity value is **>0.7**, which is considered high and indicates a strong modular (community) structure within the network.
+
+We can also try to visualize these communities:
+
+```{r}
+layout <- layout_with_kk(graph)
+
+# Using igraph only
+plot(louvain_cluster, graph,
+     layout = layout,
+     vertex.size = 0.1,
+     edge.width = 0.1,
+     vertex.label = "")
+  
+# Using ggraph
+graph_tbl <- as_tbl_graph(graph)
+V(graph_tbl)$community <- membership(louvain_cluster)
+ggraph(graph_tbl, layout = "kk") +
+  geom_edge_link(width = 0.1, alpha = 0.7, color = "grey") +
+  geom_node_point(aes(color = as.factor(community)), size = 1.5) +
+  theme_void() +
+  theme(legend.position = "none")
+```
 
 ## 7. Test that the clustering coefficient in the network cannot be statistically explain by a configuration model in which the nodes have the same degree distribution as the original.
 
@@ -196,44 +212,36 @@ network.
 original_clustering <- transitivity(graph, type = "global")
 ```
 
+Create 1000 random configuration models and register the clustering coefficient for each one of this generated model.
+
 ```{r}
-# Create 100 random configuration models and register the clustering coefficient
-num_simulations <- 100
+num_simulations <- 1000
+# Initializing a vector
 simulated_clustering <- numeric(num_simulations)
+# Simulating the graphs and saving their transitivity
 for (i in 1:num_simulations) {
   config_graph <- sample_degseq(degree(graph), method = "vl")  
   simulated_clustering[i] <- transitivity(config_graph, type = "global")
 }
+simulated_clustering <- mean(simulated_clustering)
 ```
 
-Here we use the method "vl" (Viger–Latapy) instead of the traditional
-one, "configuration", in order to avoid multi-edges and self-loops. As a
-consequence, we don't need to add too many more checks in the loop like
-is.simple().
+Here we use the method "vl" (Viger–Latapy) as it is the one suggested for undirected connected graphs.
+
+Once we have generated the networks we want to proceed with evaluation and test of statistical difference.
 
 ```{r}
-# Evaluation and statistical test
-# Calculate the p value：clustering coefficient of the simulated network VS random configuration model
-p_value <- mean(simulated_clustering >= original_clustering)
-
-# Output
-cat("Clustering coefficient of the original network: ", original_clustering, "\n")
-cat("Mean clustering coefficient of the configuration network: ", mean(simulated_clustering), "\n")
-cat("p value:", p_value, "\n")
-
+original_clustering
+simulated_clustering
 ```
 
 We tested whether the clustering coefficient of the original network can
 be explained solely by its degree distribution, by comparing it to 1000
 configuration model networks with the same degree sequence. The original
 network’s clustering coefficient was **0.4297**, while the average
-clustering coefficient from the configuration models was **0.0342**. The
-p-value is **0**, indicating that none of the simulated networks reached
-the original clustering level.
+clustering coefficient from the configuration models was **0.034**.
 
-**Therefore, we reject the null hypothesis** and conclude that the
-clustering structure in the original network **cannot be explained** by
-degree distribution alone — it has significant non-random structure.
+Therefore we can conclude that the clustering structure in the original network **cannot be explained** by degree distribution alone — it has significant non-random structure peculiar to the network.
 
 ## 8. Visualize the neighborhood of the node with the largest centrality (closeness)
 
@@ -241,21 +249,18 @@ degree distribution alone — it has significant non-random structure.
 which.max(closeness(graph))
 ```
 
-We discovered that the node with the largest centrality/closeness is
-"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS".
+We discovered that the node with the largest centrality/closeness is "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS". Apparently these are insulating materials coming from minerals.
 
 ```{r}
-neighbors(graph,"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")
+head(neighbors(graph,"SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS"))
+```
 
-neigh_graph <- make_neighborhood_graph(graph, order = 1, "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")[[1]]
+These are some of the neighbors of our node of interest
 
-# without the following plot won't work
-V(neigh_graph)$color <- trimws(V(neigh_graph)$color)
-E(neigh_graph)$color <- trimws(E(neigh_graph)$color)
-
-plot(neigh_graph)
-
-
+```{r}
+neigh_graph <- make_neighborhood_graph(graph,
+                                       order = 1, 
+                                       "SLAG WOOL.ROCK WOOL AND SIMILAR MINERAL WOOLS")[[1]]
 
 g <- as_tbl_graph(neigh_graph)
 
